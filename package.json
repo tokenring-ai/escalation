@@ -1,0 +1,17 @@
+{
+  "name": "@tokenring-ai/escalation",
+  "version": "0.2.0",
+  "description": "Escalation service for TokenRing",
+  "dependencies": {
+    "@tokenring-ai/agent": "0.2.0",
+    "@tokenring-ai/app": "0.2.0",
+    "@tokenring-ai/utility": "0.2.0",
+    "zod": "^4.3.6"
+  },
+  "exports": {
+    ".": "./index.ts",
+    "./*": "./*.ts"
+  },
+  "license": "MIT",
+  "type": "module"
+}
