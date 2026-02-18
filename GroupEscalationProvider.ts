@@ -1,14 +1,9 @@
 import type {Agent} from "@tokenring-ai/agent";
 import {z} from "zod";
+import type {CommunicationChannel} from "./EscalationProvider.ts";
 import {EscalationService} from "./index.ts";
 
 import {GroupEscalationProviderConfigSchema} from "./schema.ts";
-
-export type CommunicationChannel = {
-  send: (message: string) => Promise<void>;
-  receive: () => AsyncGenerator<string>;
-  close: () => Promise<void>;
-}
 
 export type EscalationProvider = {
   createCommunicationChannelWithUser: (userId: string, agent: Agent) => Promise<CommunicationChannel>;
@@ -67,9 +62,9 @@ export default class GroupEscalationProvider implements EscalationProvider {
           }
         }
       },
-      close: async () => {
+      [Symbol.asyncDispose]: async () => {
         abortController.abort();
-        await Promise.all(channels.map(c => c.channel.close()));
+        await Promise.all(channels.map(c => c.channel[Symbol.asyncDispose]()));
       }
     };
   }

@@ -16,11 +16,10 @@ async function execute(remainder: string, agent: Agent): Promise<void> {
 
   const escalationService = agent.requireServiceByType(EscalationService);
   
-  const channel: CommunicationChannel = await escalationService.initiateContactWithUser(target, agent);
+  await using channel: CommunicationChannel = await escalationService.initiateContactWithUser(target, agent);
 
   await channel.send(message);
   agent.infoMessage(`Escalation sent to ${target}.`);
-  await channel.close()
 }
 
 
