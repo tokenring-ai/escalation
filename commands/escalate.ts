@@ -1,14 +1,14 @@
 import Agent from "@tokenring-ai/agent/Agent";
+import {CommandFailedError} from "@tokenring-ai/agent/AgentError";
 import {TokenRingAgentCommand} from "@tokenring-ai/agent/types";
 import type {CommunicationChannel} from "@tokenring-ai/escalation/EscalationProvider";
 import EscalationService from "../EscalationService.js";
 
 const description = "/escalate {user@service|group} {message} - Send escalation request";
-async function execute(remainder: string, agent: Agent): Promise<void> {
+async function execute(remainder: string, agent: Agent): Promise<string> {
   const parts = remainder.trim().split(/\s+/);
   if (parts.length < 2) {
-    agent.errorMessage("Usage: /escalate {user@service|group} {message}");
-    return;
+    throw new CommandFailedError("Usage: /escalate {user@service|group} {message}");
   }
 
   const target = parts[0];
@@ -19,7 +19,7 @@ async function execute(remainder: string, agent: Agent): Promise<void> {
   await using channel: CommunicationChannel = await escalationService.initiateContactWithUser(target, agent);
 
   await channel.send(message);
-  agent.infoMessage(`Escalation sent to ${target}.`);
+  return `Escalation sent to ${target}.`;
 }
 
 
