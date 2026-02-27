@@ -1,5 +1,5 @@
 import escalate from "./commands/escalate.ts";
 
-export default {
+export default [
   escalate,
-};
+];

@@ -49,6 +49,7 @@ The escalate command allows you to send a message to a specific user or group fo
 
 
 export default {
+  name: "escalate",
   help,
   description,
   execute,
