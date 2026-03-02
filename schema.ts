@@ -6,5 +6,5 @@ export const EscalationServiceConfigSchema = z.object({
 
 export const GroupEscalationProviderConfigSchema = z.object({
   type: z.literal('group'),
-  members: z.array(z.string())
+  members: z.record(z.string(), z.array(z.string()))
 });
