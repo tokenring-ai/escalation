@@ -4,7 +4,7 @@ import {TokenRingAgentCommand} from "@tokenring-ai/agent/types";
 import type {CommunicationChannel} from "@tokenring-ai/escalation/EscalationProvider";
 import EscalationService from "../EscalationService.js";
 
-const description = "/escalate {user@service|group} {message} - Send escalation request";
+const description = "Send escalation request";
 async function execute(remainder: string, agent: Agent): Promise<string> {
   const parts = remainder.trim().split(/\s+/);
   if (parts.length < 2) {
