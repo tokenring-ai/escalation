@@ -1,12 +1,21 @@
-import Agent from "@tokenring-ai/agent/Agent";
 import {CommandFailedError} from "@tokenring-ai/agent/AgentError";
-import {TokenRingAgentCommand} from "@tokenring-ai/agent/types";
+import {AgentCommandInputSchema, AgentCommandInputType, TokenRingAgentCommand} from "@tokenring-ai/agent/types";
 import type {CommunicationChannel} from "@tokenring-ai/escalation/EscalationProvider";
 import EscalationService from "../EscalationService.js";
 
 const description = "Send escalation request";
-async function execute(remainder: string, agent: Agent): Promise<string> {
-  const parts = remainder.trim().split(/\s+/);
+
+const inputSchema = {
+  args: {},
+  prompt: {
+    description: "Target and message: {user@service|group} {message}",
+    required: true,
+  },
+  allowAttachments: false,
+} as const satisfies AgentCommandInputSchema;
+
+async function execute({prompt, agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> {
+  const parts = prompt.trim().split(/\s+/);
   if (parts.length < 2) {
     throw new CommandFailedError("Usage: /escalate {user@service|group} {message}");
   }
@@ -21,8 +30,6 @@ async function execute(remainder: string, agent: Agent): Promise<string> {
   await channel.send(message);
   return `Escalation sent to ${target}.`;
 }
-
-
 
 const help = `# 🚀 ESCALATE COMMAND
 
@@ -47,10 +54,10 @@ The escalate command allows you to send a message to a specific user or group fo
 - This command is synchronous: it sends the message and waits for a response from the escalation target.
 - The response from the recipient will be displayed in the chat once received.`;
 
-
 export default {
   name: "escalate",
   help,
   description,
+  inputSchema,
   execute,
-} satisfies TokenRingAgentCommand;
+} satisfies TokenRingAgentCommand<typeof inputSchema>;
