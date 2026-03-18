@@ -6,28 +6,15 @@ const description = "Send escalation request";
 
 const inputSchema = {
   args: {},
-  positionals: [
-    {
-      name: "target",
-      description: "Target user or group (user@service or group)",
-      required: true,
-    },
-    {
-      name: "message",
-      description: "Message to send",
-      required: true,
-      greedy: true,
-    },
-  ],
-  allowAttachments: false,
+  positionals: [{name: "target", description: "Target user or group (user@service or group)", required: true}],
+  remainder: {name: "message", description: "Message to send", required: true}
 } as const satisfies AgentCommandInputSchema;
 
-async function execute({positionals, agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> {
-  const {target, message} = positionals;
+async function execute({positionals: {target}, remainder, agent}: AgentCommandInputType<typeof inputSchema>): Promise<string> {
 
   const escalationService = agent.requireServiceByType(EscalationService);
   await using channel: CommunicationChannel = await escalationService.initiateContactWithUser(target, agent);
-  await channel.send(message);
+  await channel.send(remainder);
   return `Escalation sent to ${target}.`;
 }
 
