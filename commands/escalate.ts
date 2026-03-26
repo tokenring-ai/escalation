@@ -6,7 +6,7 @@ const description = "Send escalation request";
 
 const inputSchema = {
   args: {},
-  positionals: [{name: "target", description: "Target user or group (user@service or group)", required: true}],
+  positionals: [{name: "target", description: "Target user or group in service:userId format (e.g., slack:U123ABC, group:dev-team)", required: true}],
   remainder: {name: "message", description: "Message to send", required: true}
 } as const satisfies AgentCommandInputSchema;
 
@@ -22,12 +22,13 @@ const help = `Send a message to a specific user or group for further assistance 
 
 ## Usage
 
-/escalate {user@service|group} {message}
+/escalate {service:userId|group:groupName} {message}
 
 ## Example
 
-/escalate manager@slack Project deadline extension request
-/escalate dev-ops The production server is experiencing high latency`;
+/escalate slack:U123ABC Production server experiencing high latency
+/escalate telegram:123456789 Project deadline extension request
+/escalate group:dev-team Need code review for authentication module`;
 
 export default {
   name: "escalate",

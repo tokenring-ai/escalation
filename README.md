@@ -97,14 +97,16 @@ Type for bidirectional messaging with async resource management.
 type CommunicationChannel = {
   send: (message: string) => Promise<void>;
   receive: () => AsyncGenerator<string>;
+  close?: never;
   [Symbol.asyncDispose]: () => Promise<void>;
 };
 ```
 
-#### Methods
+#### Properties
 
 - **`send(message: string)`**: Send a message to the user or group
 - **`receive()`**: Get async generator to receive incoming messages
+- **`close`**: Never (not used, reserved for future use)
 - **`[Symbol.asyncDispose]`**: Async cleanup method (used with `await using`)
 
 ### GroupEscalationProvider
@@ -240,16 +242,16 @@ service.registerProvider('myplatform', new MyEscalationProvider());
 
 ## Address Format
 
-Addresses use the format `service:userId`:
+Addresses use the `service:userId` format:
 
-- `service`: Registered provider name (e.g., `telegram`, `slack`, `group`)
-- `userId`: Platform-specific user identifier or group ID
+- `service`: Registered provider name (e.g., `slack`, `telegram`, `group`)
+- `userId`: Platform-specific user identifier or group name
 
-**Examples:**
+**Examples**:
 
 - `telegram:123456789` - Telegram user by ID
 - `slack:U123ABC` - Slack user
-- `group:dev-team` - Group name (with `group:` prefix)
+- `group:dev-team` - Group name (defined in group provider's `members` configuration)
 
 ## Chat Commands
 
@@ -257,27 +259,27 @@ Addresses use the format `service:userId`:
 
 Send an escalation request to a user or group.
 
-**Usage:**
+**Usage**:
 
 ```
-/escalate {service:userId|group:groupName} {message}
+/escalate {target} {message}
 ```
 
-**Arguments:**
+**Arguments**:
 
-- `service:userId|group:groupName`: Target user address or group name
+- `target`: Target user or group in `service:userId` format (e.g., `slack:U123ABC`, `telegram:123456`, `group:dev-team`)
 - `message`: Message content to send
 
-**Examples:**
+**Examples**:
 
 ```
-/escalate telegram:123456789 Project deadline extension request
 /escalate slack:U123ABC Production server experiencing high latency
+/escalate telegram:123456789 Project deadline extension request
 /escalate group:dev-team Need code review for authentication module
 /escalate group:managers Approval needed for budget increase
 ```
 
-**Notes:**
+**Notes**:
 
 - This command sends the message and returns immediately
 - The response from the recipient will be displayed in the chat once received
@@ -442,8 +444,8 @@ bun test --coverage
 
 ### Development Dependencies
 
-- `vitest` (^4.0.18) - Testing framework
-- `typescript` (^5.9.3) - TypeScript compiler
+- `vitest` (^4.1.1) - Testing framework
+- `typescript` (^6.0.2) - TypeScript compiler
 
 ## Related Components
 
