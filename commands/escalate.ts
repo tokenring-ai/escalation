@@ -1,6 +1,6 @@
 import {AgentCommandInputSchema, AgentCommandInputType, TokenRingAgentCommand} from "@tokenring-ai/agent/types";
 import type {CommunicationChannel} from "@tokenring-ai/escalation/EscalationProvider";
-import EscalationService from "../EscalationService.js";
+import EscalationService from "../EscalationService.ts";
 
 const description = "Send escalation request";
 

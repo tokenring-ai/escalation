@@ -2,7 +2,7 @@ import {AgentCommandService} from "@tokenring-ai/agent";
 import {TokenRingPlugin} from "@tokenring-ai/app";
 import {z} from "zod";
 import agentCommands from "./commands.ts";
-import EscalationService from "./EscalationService.js";
+import EscalationService from "./EscalationService.ts";
 import GroupEscalationProvider from "./GroupEscalationProvider.ts";
 import packageJSON from "./package.json" with {type: "json"};
 import {EscalationServiceConfigSchema, GroupEscalationProviderConfigSchema} from "./schema.ts";

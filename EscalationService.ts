@@ -2,7 +2,7 @@ import type {Agent} from "@tokenring-ai/agent";
 import {TokenRingService} from "@tokenring-ai/app/types";
 import KeyedRegistry from "@tokenring-ai/utility/registry/KeyedRegistry";
 import {z} from "zod";
-import type {CommunicationChannel, EscalationProvider} from "./EscalationProvider.js";
+import type {CommunicationChannel, EscalationProvider} from "./EscalationProvider.ts";
 
 import {EscalationServiceConfigSchema} from "./schema.ts";
 
