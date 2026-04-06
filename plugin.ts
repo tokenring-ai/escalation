@@ -13,6 +13,7 @@ const packageConfigSchema = z.object({
 
 export default {
   name: packageJSON.name,
+  displayName: "Escalation Service",
   version: packageJSON.version,
   description: packageJSON.description,
   install(app, config) {
@@ -20,10 +21,8 @@ export default {
       const service = new EscalationService(config.escalation);
       app.addServices(service);
 
-      for (const [providerName, provider] of Object.entries(config.escalation.providers)) {
-        if (provider.type === 'group') {
-          service.registerProvider(providerName, new GroupEscalationProvider(GroupEscalationProviderConfigSchema.parse(provider)));
-        }
+      for (const [groupName, groupConfig] of Object.entries(config.escalation.groups)) {
+        service.registerProvider(groupName, new GroupEscalationProvider(groupConfig));
       }
 
       app.waitForService(AgentCommandService, agentCommandService =>

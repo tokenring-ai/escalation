@@ -1,7 +1,7 @@
 {
   "name": "@tokenring-ai/escalation",
   "version": "0.2.0",
-  "description": "Escalation service for TokenRing",
+  "description": "Protocol for handing off complex tasks to humans or senior agents.",
   "dependencies": {
     "@tokenring-ai/agent": "0.2.0",
     "@tokenring-ai/app": "0.2.0",
