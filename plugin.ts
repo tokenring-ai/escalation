@@ -1,11 +1,11 @@
 import {AgentCommandService} from "@tokenring-ai/agent";
-import {TokenRingPlugin} from "@tokenring-ai/app";
+import type {TokenRingPlugin} from "@tokenring-ai/app";
 import {z} from "zod";
 import agentCommands from "./commands.ts";
 import EscalationService from "./EscalationService.ts";
 import GroupEscalationProvider from "./GroupEscalationProvider.ts";
 import packageJSON from "./package.json" with {type: "json"};
-import {EscalationServiceConfigSchema, GroupEscalationProviderConfigSchema} from "./schema.ts";
+import {EscalationServiceConfigSchema,} from "./schema.ts";
 
 const packageConfigSchema = z.object({
   escalation: EscalationServiceConfigSchema.optional(),
@@ -21,14 +21,19 @@ export default {
       const service = new EscalationService(config.escalation);
       app.addServices(service);
 
-      for (const [groupName, groupConfig] of Object.entries(config.escalation.groups)) {
-        service.registerProvider(groupName, new GroupEscalationProvider(groupConfig));
+      for (const [groupName, groupConfig] of Object.entries(
+        config.escalation.groups,
+      )) {
+        service.registerProvider(
+          groupName,
+          new GroupEscalationProvider(groupConfig),
+        );
       }
 
-      app.waitForService(AgentCommandService, agentCommandService =>
-        agentCommandService.addAgentCommands(agentCommands)
+      app.waitForService(AgentCommandService, (agentCommandService) =>
+        agentCommandService.addAgentCommands(agentCommands),
       );
     }
   },
-  config: packageConfigSchema
+  config: packageConfigSchema,
 } satisfies TokenRingPlugin<typeof packageConfigSchema>;

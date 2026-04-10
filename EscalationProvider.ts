@@ -1,12 +1,15 @@
 import type {Agent} from "@tokenring-ai/agent";
+import type {MaybePromise} from "bun";
 
 export type CommunicationChannel = {
   send: (message: string) => Promise<void>;
   receive: () => AsyncGenerator<string>;
   close?: never;
-  [Symbol.asyncDispose]: () => Promise<void>;
-}
+} & (AsyncDisposable | Disposable);
 
 export type EscalationProvider = {
-  createCommunicationChannelWithUser: (userId: string, agent: Agent) => Promise<CommunicationChannel>;
-}
+  createCommunicationChannelWithUser: (
+    userId: string,
+    agent: Agent,
+  ) => MaybePromise<CommunicationChannel>;
+};
