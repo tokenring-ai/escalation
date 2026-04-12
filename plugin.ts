@@ -5,7 +5,7 @@ import agentCommands from "./commands.ts";
 import EscalationService from "./EscalationService.ts";
 import GroupEscalationProvider from "./GroupEscalationProvider.ts";
 import packageJSON from "./package.json" with {type: "json"};
-import {EscalationServiceConfigSchema,} from "./schema.ts";
+import {EscalationServiceConfigSchema} from "./schema.ts";
 
 const packageConfigSchema = z.object({
   escalation: EscalationServiceConfigSchema.optional(),

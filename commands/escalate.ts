@@ -1,4 +1,4 @@
-import type {AgentCommandInputSchema, AgentCommandInputType, TokenRingAgentCommand,} from "@tokenring-ai/agent/types";
+import type {AgentCommandInputSchema, AgentCommandInputType, TokenRingAgentCommand} from "@tokenring-ai/agent/types";
 import type {CommunicationChannel} from "@tokenring-ai/escalation/EscalationProvider";
 import EscalationService from "../EscalationService.ts";
 
