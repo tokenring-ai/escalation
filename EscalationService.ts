@@ -18,7 +18,7 @@ export default class EscalationService implements TokenRingService {
   ) {
   }
 
-  registerProvider = this.providers.register;
+  registerProvider = this.providers.set;
 
   async initiateContactWithUser(
     serviceNameAndUser: string,
@@ -27,7 +27,7 @@ export default class EscalationService implements TokenRingService {
     const [, serviceName, userId] =
     serviceNameAndUser.match(/^(.*?):(.*)$/) ?? [];
     if (userId && serviceName) {
-      const provider = this.providers.requireItemByName(serviceName);
+      const provider = this.providers.require(serviceName);
       return await provider.createCommunicationChannelWithUser(userId, agent);
     }
 
