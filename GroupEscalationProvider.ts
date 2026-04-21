@@ -24,7 +24,7 @@ export default class GroupEscalationProvider implements EscalationProvider {
   ): Promise<CommunicationChannel> {
     const escalationService = agent.requireServiceByType(EscalationService);
 
-    const members = this.config.members[groupId as any] ?? null;
+    const members = this.config.members[groupId] ?? null;
     if (!members) throw new Error("Invalid group ID: " + groupId + ".");
 
     const channels: { userOrGroupId: string; channel: CommunicationChannel }[] =
