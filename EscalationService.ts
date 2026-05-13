@@ -11,10 +11,9 @@ export default class EscalationService implements TokenRingService {
   description = "Service for escalating messages to users and receiving responses";
 
   private providers = new KeyedRegistry<EscalationProvider>();
+  registerProvider = this.providers.set;
 
   constructor(readonly config: z.output<typeof EscalationServiceConfigSchema>) {}
-
-  registerProvider = this.providers.set;
 
   async initiateContactWithUser(serviceNameAndUser: string, agent: Agent): Promise<CommunicationChannel> {
     const [, serviceName, userId] = serviceNameAndUser.match(/^(.*?):(.*)$/) ?? [];

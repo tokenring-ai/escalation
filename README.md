@@ -1,10 +1,12 @@
 # @tokenring-ai/escalation
 
-An abstract service to initiate communication with one or more users via escalation channels, enabling AI agents to request human assistance and await responses.
+Protocol for handing off complex tasks to humans or senior agents.
 
 ## Overview
 
-The escalation package provides a pluggable system for AI agents to escalate decisions or requests to human users through various communication platforms (Slack, Telegram, etc.). It supports both individual user targeting and group messaging, with a unified interface for sending messages and receiving responses via the `CommunicationChannel` pattern.
+The escalation package provides a pluggable system for AI agents to escalate decisions or requests to human users
+through various communication platforms (Slack, Telegram, etc.). It supports both individual user targeting and group
+messaging, with a unified interface for sending messages and receiving responses via the `CommunicationChannel` pattern.
 
 ### Key Features
 
@@ -27,15 +29,20 @@ bun add @tokenring-ai/escalation
 Configure the escalation service in your TokenRing app configuration:
 
 ```typescript
-import {defineConfig} from "@tokenring-ai/app";
+import { defineConfig } from "@tokenring-ai/app";
 
 export default defineConfig({
   escalation: {
-    providers: {
-      "group": {
+    groups: {
+      "dev-team": {
         type: "group",
         members: {
-          "dev-team": ["telegram:123456", "slack:U123ABC"],
+          "dev-team": ["telegram:123456", "slack:U123ABC"]
+        }
+      },
+      "managers": {
+        type: "group",
+        members: {
           "managers": ["telegram:789012", "telegram:345678"]
         }
       }
@@ -47,20 +54,22 @@ export default defineConfig({
 ### Configuration Schema
 
 ```typescript
-const EscalationServiceConfigSchema = z.object({
-  providers: z.record(z.string(), z.any())
+const GroupEscalationProviderConfigSchema = z.object({
+  members: z.record(z.string(), z.array(z.string())),
 });
 
-const GroupEscalationProviderConfigSchema = z.object({
-  type: z.literal('group'),
-  members: z.record(z.string(), z.array(z.string()))
+const EscalationServiceConfigSchema = z.object({
+  groups: z.record(z.string(), GroupEscalationProviderConfigSchema),
 });
 ```
 
 **Configuration Options:**
 
-- `escalation.providers`: Map of provider names to their configurations
-- `group members`: Map of group names to arrays of `service:userId` addresses
+| Option                  | Type                                            | Description                                                |
+|-------------------------|-------------------------------------------------|------------------------------------------------------------|
+| `escalation.groups`     | `Record<string, GroupEscalationProviderConfig>` | Map of group names to their configurations                 |
+| `groups.<name>.type`    | `'group'`                                       | Provider type (currently only 'group' is supported)        |
+| `groups.<name>.members` | `Record<string, string[]>`                      | Map of group names to arrays of `service:userId` addresses |
 
 ## Core Components
 
@@ -68,25 +77,31 @@ const GroupEscalationProviderConfigSchema = z.object({
 
 The core service that manages escalation providers and initiates contact with users.
 
-#### Properties
+**Implements:** `TokenRingService`
 
-- `name: string` - Service name: "EscalationService"
-- `description: string` - Service description
-- `config: object` - Service configuration
+**Properties:**
 
-#### Methods
+| Property      | Type     | Description                       |
+|---------------|----------|-----------------------------------|
+| `name`        | `string` | Service name: "EscalationService" |
+| `description` | `string` | Service description               |
+| `config`      | `object` | Service configuration             |
 
-- **`registerProvider(name: string, provider: EscalationProvider)`**: Register a new escalation provider
-- **`initiateContactWithUser(serviceNameAndUser: string, agent: Agent): Promise<CommunicationChannel>`**: Initiate contact with a user or group and return a communication channel
+**Methods:**
+
+| Method                                                                                             | Description                                                              |
+|----------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------|
+| `registerProvider(name: string, provider: EscalationProvider)`                                     | Register a new escalation provider                                       |
+| `initiateContactWithUser(serviceNameAndUser: string, agent: Agent): Promise<CommunicationChannel>` | Initiate contact with a user or group and return a communication channel |
 
 ### EscalationProvider
 
 Interface for creating communication channels with users.
 
 ```typescript
-interface EscalationProvider {
-  createCommunicationChannelWithUser: (userId: string, agent: Agent) => Promise<CommunicationChannel>;
-}
+export type EscalationProvider = {
+  createCommunicationChannelWithUser: (userId: string, agent: Agent) => MaybePromise<CommunicationChannel>;
+};
 ```
 
 ### CommunicationChannel
@@ -94,30 +109,33 @@ interface EscalationProvider {
 Type for bidirectional messaging with async resource management.
 
 ```typescript
-type CommunicationChannel = {
+export type CommunicationChannel = {
   send: (message: string) => Promise<void>;
   receive: () => AsyncGenerator<string>;
   close?: never;
-  [Symbol.asyncDispose]: () => Promise<void>;
-};
+} & (AsyncDisposable | Disposable);
 ```
 
-#### Properties
+**Properties:**
 
-- **`send(message: string)`**: Send a message to the user or group
-- **`receive()`**: Get async generator to receive incoming messages
-- **`close`**: Never (not used, reserved for future use)
-- **`[Symbol.asyncDispose]`**: Async cleanup method (used with `await using`)
+| Property                  | Type                     | Description                                      |
+|---------------------------|--------------------------|--------------------------------------------------|
+| `send(message: string)`   | `Promise<void>`          | Send a message to the user or group              |
+| `receive()`               | `AsyncGenerator<string>` | Get async generator to receive incoming messages |
+| `close`                   | `never`                  | Reserved for future use (not used)               |
+| `[Symbol.asyncDispose]()` | `Promise<void>`          | Async cleanup method (used with `await using`)   |
 
 ### GroupEscalationProvider
 
 Built-in provider for group messaging with automatic broadcast capabilities.
 
-#### Constructor
+**Constructor:**
 
-- **`GroupEscalationProvider(config: { type: 'group', members: Record<string, string[]> })`**: Create a new group escalation provider
+```typescript
+constructor(config: { type: 'group', members: Record<string, string[]> })
+```
 
-#### Features
+**Features:**
 
 - Broadcast messages to all group members
 - Collect responses from all members
@@ -130,7 +148,7 @@ Built-in provider for group messaging with automatic broadcast capabilities.
 
 Agents can use the built-in command to escalate to users:
 
-```
+```bash
 /escalate telegram:123456789 Need approval for production deployment
 /escalate slack:U123ABC Code review needed for PR #123
 /escalate group:dev-team Code review needed for PR #123
@@ -139,7 +157,7 @@ Agents can use the built-in command to escalate to users:
 ### Programmatic Usage
 
 ```typescript
-import {EscalationService} from '@tokenring-ai/escalation';
+import { EscalationService } from '@tokenring-ai/escalation';
 
 const escalationService = agent.requireServiceByType(EscalationService);
 
@@ -168,19 +186,26 @@ for await (const message of channel.receive()) {
 Groups allow broadcasting to multiple users across different platforms:
 
 ```typescript
-{
+import { defineConfig } from "@tokenring-ai/app";
+
+export default defineConfig({
   escalation: {
-    providers: {
-      "group": {
+    groups: {
+      "dev-team": {
         type: "group",
         members: {
-          "dev-team": ["telegram:123456", "slack:U123ABC", "telegram:789012"],
+          "dev-team": ["telegram:123456", "slack:U123ABC", "telegram:789012"]
+        }
+      },
+      "managers": {
+        type: "group",
+        members: {
           "managers": ["telegram:345678", "slack:U456DEF"]
         }
       }
     }
   }
-}
+});
 ```
 
 When messaging a group, all users receive the message and responses are collected:
@@ -205,11 +230,12 @@ for await (const message of channel.receive()) {
 Implement the `EscalationProvider` interface:
 
 ```typescript
-import type {EscalationProvider} from '@tokenring-ai/escalation';
-import type {Agent} from '@tokenring-ai/agent';
+import type { EscalationProvider } from '@tokenring-ai/escalation';
+import type { Agent } from '@tokenring-ai/agent';
+import type { CommunicationChannel } from '@tokenring-ai/escalation/EscalationProvider';
 
 export class MyEscalationProvider implements EscalationProvider {
-  async createCommunicationChannelWithUser(userId: string, agent: Agent) {
+  async createCommunicationChannelWithUser(userId: string, agent: Agent): Promise<CommunicationChannel> {
     // Create and return a CommunicationChannel for this user
     return {
       send: async (message: string) => {
@@ -233,8 +259,8 @@ export class MyEscalationProvider implements EscalationProvider {
 Register your provider:
 
 ```typescript
-import {EscalationService} from '@tokenring-ai/escalation';
-import {MyEscalationProvider} from './MyEscalationProvider';
+import { EscalationService } from '@tokenring-ai/escalation';
+import { MyEscalationProvider } from './MyEscalationProvider';
 
 const service = app.requireService(EscalationService);
 service.registerProvider('myplatform', new MyEscalationProvider());
@@ -247,7 +273,7 @@ Addresses use the `service:userId` format:
 - `service`: Registered provider name (e.g., `slack`, `telegram`, `group`)
 - `userId`: Platform-specific user identifier or group name
 
-**Examples**:
+**Examples:**
 
 - `telegram:123456789` - Telegram user by ID
 - `slack:U123ABC` - Slack user
@@ -259,27 +285,29 @@ Addresses use the `service:userId` format:
 
 Send an escalation request to a user or group.
 
-**Usage**:
+**Usage:**
 
-```
+```bash
 /escalate {target} {message}
 ```
 
-**Arguments**:
+**Arguments:**
 
-- `target`: Target user or group in `service:userId` format (e.g., `slack:U123ABC`, `telegram:123456`, `group:dev-team`)
-- `message`: Message content to send
+| Argument  | Type     | Required | Description                                                                                                  |
+|-----------|----------|----------|--------------------------------------------------------------------------------------------------------------|
+| `target`  | `string` | Yes      | Target user or group in `service:userId` format (e.g., `slack:U123ABC`, `telegram:123456`, `group:dev-team`) |
+| `message` | `string` | Yes      | Message content to send                                                                                      |
 
-**Examples**:
+**Examples:**
 
-```
+```bash
 /escalate slack:U123ABC Production server experiencing high latency
 /escalate telegram:123456789 Project deadline extension request
 /escalate group:dev-team Need code review for authentication module
 /escalate group:managers Approval needed for budget increase
 ```
 
-**Notes**:
+**Notes:**
 
 - This command sends the message and returns immediately
 - The response from the recipient will be displayed in the chat once received
@@ -296,8 +324,8 @@ import escalationPlugin from '@tokenring-ai/escalation/plugin';
 
 app.installPlugin(escalationPlugin, {
   escalation: {
-    providers: {
-      "group": {
+    groups: {
+      "dev-team": {
         type: "group",
         members: {
           "dev-team": ["telegram:123456", "slack:U123ABC"]
@@ -317,13 +345,13 @@ import EscalationService from '@tokenring-ai/escalation/EscalationService';
 import GroupEscalationProvider from '@tokenring-ai/escalation/GroupEscalationProvider';
 
 const service = new EscalationService({
-  providers: {}
+  groups: {}
 });
 
 app.addServices(service);
 
 // Register group provider
-service.registerProvider('group', new GroupEscalationProvider({
+service.registerProvider('dev-team', new GroupEscalationProvider({
   type: 'group',
   members: {
     'dev-team': ['telegram:123456', 'slack:U123ABC']
@@ -336,7 +364,7 @@ service.registerProvider('group', new GroupEscalationProvider({
 Commands are automatically registered when using the plugin. For manual registration:
 
 ```typescript
-import {AgentCommandService} from '@tokenring-ai/agent';
+import { AgentCommandService } from '@tokenring-ai/agent';
 import agentCommands from '@tokenring-ai/escalation/commands';
 
 app.waitForService(AgentCommandService, agentCommandService =>
@@ -354,7 +382,7 @@ The service throws errors for:
 - **Provider-specific errors**: Network issues, unauthorized users, etc.
 
 ```typescript
-import {EscalationService} from '@tokenring-ai/escalation';
+import { EscalationService } from '@tokenring-ai/escalation';
 
 try {
   const escalationService = agent.requireServiceByType(EscalationService);
@@ -375,7 +403,8 @@ try {
 
 ## State Management
 
-The escalation service itself does not maintain state, but communication channels are managed through the async dispose pattern. Channels are automatically cleaned up when:
+The escalation service itself does not maintain state, but communication channels are managed through the async dispose
+pattern. Channels are automatically cleaned up when:
 
 - The `await using` block exits
 - The `[Symbol.asyncDispose]` method is called
@@ -402,7 +431,7 @@ The escalation service itself does not maintain state, but communication channel
 
 ## Package Structure
 
-```
+```text
 pkg/escalation/
 ├── index.ts                    # Main exports
 ├── plugin.ts                   # Plugin definition for TokenRing integration
@@ -413,9 +442,8 @@ pkg/escalation/
 ├── commands.ts                 # Command exports
 ├── commands/
 │   └── escalate.ts             # /escalate command implementation
-├── test/
-│   └── *.test.ts               # Test files
-└── vitest.config.ts            # Vitest configuration
+├── vitest.config.ts            # Vitest configuration
+└── LICENSE                     # MIT License
 ```
 
 ## Testing
@@ -437,15 +465,19 @@ bun test --coverage
 
 ### Production Dependencies
 
-- `@tokenring-ai/agent` (0.2.0) - Agent orchestration system
-- `@tokenring-ai/app` (0.2.0) - Application framework
-- `@tokenring-ai/utility` (0.2.0) - Shared utilities and registry
-- `zod` (^4.3.6) - Schema validation
+| Package                 | Version | Description                   |
+|-------------------------|---------|-------------------------------|
+| `@tokenring-ai/agent`   | 0.2.0   | Agent orchestration system    |
+| `@tokenring-ai/app`     | 0.2.0   | Application framework         |
+| `@tokenring-ai/utility` | 0.2.0   | Shared utilities and registry |
+| `zod`                   | ^4.3.6  | Schema validation             |
 
 ### Development Dependencies
 
-- `vitest` (^4.1.1) - Testing framework
-- `typescript` (^6.0.2) - TypeScript compiler
+| Package      | Version | Description         |
+|--------------|---------|---------------------|
+| `vitest`     | ^4.1.1  | Testing framework   |
+| `typescript` | ^6.0.2  | TypeScript compiler |
 
 ## Related Components
 
