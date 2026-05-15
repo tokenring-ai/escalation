@@ -1,12 +1,14 @@
 # @tokenring-ai/escalation
 
-Protocol for handing off complex tasks to humans or senior agents.
-
 ## Overview
 
-The escalation package provides a pluggable system for AI agents to escalate decisions or requests to human users
-through various communication platforms (Slack, Telegram, etc.). It supports both individual user targeting and group
-messaging, with a unified interface for sending messages and receiving responses via the `CommunicationChannel` pattern.
+The `@tokenring-ai/escalation` package provides a pluggable protocol for AI agents to hand off complex tasks to humans
+or senior agents. It enables bidirectional communication channels with users through various platforms (Slack, Telegram,
+etc.), supporting both individual user targeting and group messaging.
+
+This package implements a service-based architecture with the `EscalationService` as the core orchestrator, managing
+multiple `EscalationProvider` implementations for different communication platforms. The built-in
+`GroupEscalationProvider` enables broadcasting messages to predefined groups and collecting responses from all members.
 
 ### Key Features
 
@@ -18,37 +20,80 @@ messaging, with a unified interface for sending messages and receiving responses
 - **Group Broadcasting**: Built-in `GroupEscalationProvider` for group messaging with automatic broadcast
 - **Async Resource Management**: Automatic cleanup using `Symbol.asyncDispose`
 
+### Integration Points
+
+- **@tokenring-ai/agent**: Agent orchestration and command execution
+- **@tokenring-ai/app**: Application framework and plugin system
+- **@tokenring-ai/utility**: KeyedRegistry and utility functions
+
 ## Installation
 
 ```bash
 bun add @tokenring-ai/escalation
 ```
 
+## Chat Commands
+
+The package provides the following chat command for agent interactions:
+
+| Command     | Description                          |
+|-------------|--------------------------------------|
+| `/escalate` | Send escalation request to user/group |
+
+### /escalate
+
+Send an escalation request to a user or group.
+
+**Usage:**
+
+```bash
+/escalate {target} {message}
+```
+
+**Arguments:**
+
+| Argument  | Type     | Required | Description                                                                                                  |
+|-----------|----------|----------|--------------------------------------------------------------------------------------------------------------|
+| `target`  | `string` | Yes      | Target user or group in `service:userId` format (e.g., `slack:U123ABC`, `telegram:123456`, `group:dev-team`) |
+| `message` | `string` | Yes      | Message content to send                                                                                      |
+
+**Examples:**
+
+```bash
+/escalate slack:U123ABC Production server experiencing high latency
+/escalate telegram:123456789 Project deadline extension request
+/escalate group:dev-team Need code review for authentication module
+/escalate group:managers Approval needed for budget increase
+```
+
+**Notes:**
+
+- This command sends the message and returns immediately
+- Responses from recipients will be displayed in the chat once received
+- Use `await using` for proper resource cleanup
+
+## Tools
+
+This package does not define any tools.
+
 ## Configuration
 
 Configure the escalation service in your TokenRing app configuration:
 
-```typescript
-import { defineConfig } from "@tokenring-ai/app";
-
-export default defineConfig({
-  escalation: {
-    groups: {
-      "dev-team": {
-        type: "group",
-        members: {
-          "dev-team": ["telegram:123456", "slack:U123ABC"]
-        }
-      },
-      "managers": {
-        type: "group",
-        members: {
-          "managers": ["telegram:789012", "telegram:345678"]
-        }
-      }
-    }
-  }
-});
+```yaml
+escalation:
+  groups:
+    dev-team:
+      type: group
+      members:
+        dev-team:
+          - telegram:123456
+          - slack:U123ABC
+    managers:
+      type: group
+      members:
+        - telegram:789012
+        - telegram:345678
 ```
 
 ### Configuration Schema
@@ -65,15 +110,27 @@ const EscalationServiceConfigSchema = z.object({
 
 **Configuration Options:**
 
-| Option                  | Type                                            | Description                                                |
-|-------------------------|-------------------------------------------------|------------------------------------------------------------|
-| `escalation.groups`     | `Record<string, GroupEscalationProviderConfig>` | Map of group names to their configurations                 |
-| `groups.<name>.type`    | `'group'`                                       | Provider type (currently only 'group' is supported)        |
-| `groups.<name>.members` | `Record<string, string[]>`                      | Map of group names to arrays of `service:userId` addresses |
+| Option                        | Type                                            | Description                                                |
+|-------------------------------|-------------------------------------------------|------------------------------------------------------------|
+| `escalation.groups`           | `Record<string, GroupEscalationProviderConfig>` | Map of group names to their configurations                 |
+| `groups.<name>.type`          | `'group'`                                       | Provider type (currently only 'group' is supported)        |
+| `groups.<name>.members`       | `Record<string, string[]>`                      | Map of group names to arrays of `service:userId` addresses |
 
-## Core Components
+### ENV Variables
 
-### EscalationService
+This package does not define any environment variables.
+
+## License
+
+MIT License - see LICENSE file for details.
+
+---
+
+## Developer Reference
+
+### Core Components
+
+#### EscalationService
 
 The core service that manages escalation providers and initiates contact with users.
 
@@ -83,7 +140,7 @@ The core service that manages escalation providers and initiates contact with us
 
 | Property      | Type     | Description                       |
 |---------------|----------|-----------------------------------|
-| `name`        | `string` | Service name: "EscalationService" |
+| `name`        | `string` | Service name: `"EscalationService"` |
 | `description` | `string` | Service description               |
 | `config`      | `object` | Service configuration             |
 
@@ -94,17 +151,26 @@ The core service that manages escalation providers and initiates contact with us
 | `registerProvider(name: string, provider: EscalationProvider)`                                     | Register a new escalation provider                                       |
 | `initiateContactWithUser(serviceNameAndUser: string, agent: Agent): Promise<CommunicationChannel>` | Initiate contact with a user or group and return a communication channel |
 
-### EscalationProvider
+**Constructor:**
+
+```typescript
+constructor(config: z.output<typeof EscalationServiceConfigSchema>)
+```
+
+#### EscalationProvider
 
 Interface for creating communication channels with users.
 
 ```typescript
 export type EscalationProvider = {
-  createCommunicationChannelWithUser: (userId: string, agent: Agent) => MaybePromise<CommunicationChannel>;
+  createCommunicationChannelWithUser: (
+    userId: string,
+    agent: Agent
+  ) => MaybePromise<CommunicationChannel>;
 };
 ```
 
-### CommunicationChannel
+#### CommunicationChannel
 
 Type for bidirectional messaging with async resource management.
 
@@ -122,10 +188,12 @@ export type CommunicationChannel = {
 |---------------------------|--------------------------|--------------------------------------------------|
 | `send(message: string)`   | `Promise<void>`          | Send a message to the user or group              |
 | `receive()`               | `AsyncGenerator<string>` | Get async generator to receive incoming messages |
-| `close`                   | `never`                  | Reserved for future use (not used)               |
 | `[Symbol.asyncDispose]()` | `Promise<void>`          | Async cleanup method (used with `await using`)   |
 
-### GroupEscalationProvider
+**Note:** The `close` property is set to `never` to indicate it should not be used. Resource cleanup is handled
+through the `Symbol.asyncDispose` pattern.
+
+#### GroupEscalationProvider
 
 Built-in provider for group messaging with automatic broadcast capabilities.
 
@@ -142,19 +210,101 @@ constructor(config: { type: 'group', members: Record<string, string[]> })
 - Automatically broadcast responses to other group members with `@userId` prefix
 - Clean resource management with AbortController
 
-## Usage Examples
+### Services
 
-### Using the /escalate Command
+#### EscalationService Implementation
 
-Agents can use the built-in command to escalate to users:
+The `EscalationService` implements the `TokenRingService` interface and provides:
 
-```bash
-/escalate telegram:123456789 Need approval for production deployment
-/escalate slack:U123ABC Code review needed for PR #123
-/escalate group:dev-team Code review needed for PR #123
+- Provider registry using `KeyedRegistry<EscalationProvider>`
+- User/group contact initiation with address parsing
+- Error handling for invalid addresses and unknown providers
+
+**Address Format:**
+
+Addresses use the `service:userId` format:
+
+- `service`: Registered provider name (e.g., `slack`, `telegram`, `group`)
+- `userId`: Platform-specific user identifier or group name
+
+**Examples:**
+
+- `telegram:123456789` - Telegram user by ID
+- `slack:U123ABC` - Slack user
+- `group:dev-team` - Group name (defined in group provider's `members` configuration)
+
+### Provider Documentation
+
+#### Creating a Custom Escalation Provider
+
+Implement the `EscalationProvider` interface:
+
+```typescript
+import type { EscalationProvider } from '@tokenring-ai/escalation';
+import type { Agent } from '@tokenring-ai/agent';
+import type { CommunicationChannel } from '@tokenring-ai/escalation/EscalationProvider';
+
+export class MyEscalationProvider implements EscalationProvider {
+  async createCommunicationChannelWithUser(
+    userId: string,
+    agent: Agent
+  ): Promise<CommunicationChannel> {
+    // Create and return a CommunicationChannel for this user
+    return {
+      send: async (message: string) => {
+        // Send message to user via your platform
+        console.log(`Sending to ${userId}: ${message}`);
+      },
+      receive: async function* () {
+        // Generate incoming messages as an async generator
+        // This should yield messages as they arrive
+        yield 'Hello from user';
+      },
+      [Symbol.asyncDispose]: async () => {
+        // Clean up resources
+        console.log(`Cleaning up channel for ${userId}`);
+      }
+    };
+  }
+}
 ```
 
-### Programmatic Usage
+**Register your provider:**
+
+```typescript
+import { EscalationService } from '@tokenring-ai/escalation';
+import { MyEscalationProvider } from './MyEscalationProvider';
+
+const service = app.requireService(EscalationService);
+service.registerProvider('myplatform', new MyEscalationProvider());
+```
+
+### RPC Endpoints
+
+This package does not define any RPC endpoints.
+
+### Usage Examples
+
+#### Using the Plugin
+
+```typescript
+import escalationPlugin from '@tokenring-ai/escalation/plugin';
+
+app.installPlugin(escalationPlugin, {
+  escalation: {
+    groups: {
+      'dev-team': {
+        type: 'group',
+        members: {
+          'dev-team': ['telegram:123456', 'slack:U123ABC']
+        }
+      }
+    }
+  }
+});
+```
+
+#### Programmatic Usage
 
 ```typescript
 import { EscalationService } from '@tokenring-ai/escalation';
@@ -181,7 +331,7 @@ for await (const message of channel.receive()) {
 // Channel is automatically closed via Symbol.asyncDispose
 ```
 
-### Group Communication
+#### Group Communication
 
 Groups allow broadcasting to multiple users across different platforms:
 
@@ -225,120 +375,7 @@ for await (const message of channel.receive()) {
 }
 ```
 
-### Creating a Custom Escalation Provider
-
-Implement the `EscalationProvider` interface:
-
-```typescript
-import type { EscalationProvider } from '@tokenring-ai/escalation';
-import type { Agent } from '@tokenring-ai/agent';
-import type { CommunicationChannel } from '@tokenring-ai/escalation/EscalationProvider';
-
-export class MyEscalationProvider implements EscalationProvider {
-  async createCommunicationChannelWithUser(userId: string, agent: Agent): Promise<CommunicationChannel> {
-    // Create and return a CommunicationChannel for this user
-    return {
-      send: async (message: string) => {
-        // Send message to user via your platform
-        console.log(`Sending to ${userId}: ${message}`);
-      },
-      receive: async function* () {
-        // Generate incoming messages as an async generator
-        // This should yield messages as they arrive
-        yield 'Hello from user';
-      },
-      [Symbol.asyncDispose]: async () => {
-        // Clean up resources
-        console.log(`Cleaning up channel for ${userId}`);
-      }
-    };
-  }
-}
-```
-
-Register your provider:
-
-```typescript
-import { EscalationService } from '@tokenring-ai/escalation';
-import { MyEscalationProvider } from './MyEscalationProvider';
-
-const service = app.requireService(EscalationService);
-service.registerProvider('myplatform', new MyEscalationProvider());
-```
-
-## Address Format
-
-Addresses use the `service:userId` format:
-
-- `service`: Registered provider name (e.g., `slack`, `telegram`, `group`)
-- `userId`: Platform-specific user identifier or group name
-
-**Examples:**
-
-- `telegram:123456789` - Telegram user by ID
-- `slack:U123ABC` - Slack user
-- `group:dev-team` - Group name (defined in group provider's `members` configuration)
-
-## Chat Commands
-
-### /escalate
-
-Send an escalation request to a user or group.
-
-**Usage:**
-
-```bash
-/escalate {target} {message}
-```
-
-**Arguments:**
-
-| Argument  | Type     | Required | Description                                                                                                  |
-|-----------|----------|----------|--------------------------------------------------------------------------------------------------------------|
-| `target`  | `string` | Yes      | Target user or group in `service:userId` format (e.g., `slack:U123ABC`, `telegram:123456`, `group:dev-team`) |
-| `message` | `string` | Yes      | Message content to send                                                                                      |
-
-**Examples:**
-
-```bash
-/escalate slack:U123ABC Production server experiencing high latency
-/escalate telegram:123456789 Project deadline extension request
-/escalate group:dev-team Need code review for authentication module
-/escalate group:managers Approval needed for budget increase
-```
-
-**Notes:**
-
-- This command sends the message and returns immediately
-- The response from the recipient will be displayed in the chat once received
-- Use `await using` for proper resource cleanup
-
-## Integration
-
-### Plugin Registration
-
-The escalation package provides a plugin for easy TokenRing integration:
-
-```typescript
-import escalationPlugin from '@tokenring-ai/escalation/plugin';
-
-app.installPlugin(escalationPlugin, {
-  escalation: {
-    groups: {
-      "dev-team": {
-        type: "group",
-        members: {
-          "dev-team": ["telegram:123456", "slack:U123ABC"]
-        }
-      }
-    }
-  }
-});
-```
-
-### Service Registration
-
-Manual service registration:
+#### Manual Service Registration
 
 ```typescript
 import EscalationService from '@tokenring-ai/escalation/EscalationService';
@@ -359,7 +396,7 @@ service.registerProvider('dev-team', new GroupEscalationProvider({
 }));
 ```
 
-### Command Registration
+#### Manual Command Registration
 
 Commands are automatically registered when using the plugin. For manual registration:
 
@@ -372,7 +409,46 @@ app.waitForService(AgentCommandService, agentCommandService =>
 );
 ```
 
-## Error Handling
+### Testing
+
+Run the test suite with vitest:
+
+```bash
+# Run all tests
+bun test
+
+# Run tests in watch mode
+bun test --watch
+
+# Run tests with coverage
+bun test --coverage
+```
+
+### Dependencies
+
+#### Production Dependencies
+
+| Package                 | Version     | Description                   |
+|-------------------------|-------------|-------------------------------|
+| `@tokenring-ai/agent`   | `workspace:*` | Agent orchestration system    |
+| `@tokenring-ai/app`     | `workspace:*` | Application framework         |
+| `@tokenring-ai/utility` | `workspace:*` | Shared utilities and registry |
+| `zod`                   | `^4.3.6`    | Schema validation             |
+
+#### Development Dependencies
+
+| Package      | Version     | Description         |
+|--------------|-------------|---------------------|
+| `vitest`     | `^4.1.1`    | Testing framework   |
+| `typescript` | `^6.0.2`    | TypeScript compiler |
+
+### Related Components
+
+- **@tokenring-ai/agent**: Agent orchestration and command execution
+- **@tokenring-ai/app**: Application framework and plugin system
+- **@tokenring-ai/utility**: KeyedRegistry and utility functions
+
+### Error Handling
 
 The service throws errors for:
 
@@ -401,7 +477,7 @@ try {
 }
 ```
 
-## State Management
+### State Management
 
 The escalation service itself does not maintain state, but communication channels are managed through the async dispose
 pattern. Channels are automatically cleaned up when:
@@ -410,7 +486,7 @@ pattern. Channels are automatically cleaned up when:
 - The `[Symbol.asyncDispose]` method is called
 - An error occurs during communication
 
-## Best Practices
+### Best Practices
 
 1. **Always use `await using`**: Ensure proper cleanup of communication channels
 2. **Validate addresses**: Check address format before calling `initiateContactWithUser`
@@ -419,7 +495,7 @@ pattern. Channels are automatically cleaned up when:
 5. **Set timeouts**: Consider implementing timeouts for long-running conversations
 6. **Monitor resource usage**: Be mindful of multiple concurrent channels
 
-## Use Cases
+### Use Cases
 
 - **Approval Workflows**: Request human approval for critical operations
 - **Decision Support**: Get human input on ambiguous situations
@@ -429,7 +505,7 @@ pattern. Channels are automatically cleaned up when:
 - **Content Moderation**: Flag content for human review
 - **Group Collaboration**: Broadcast messages to multiple team members and collect responses
 
-## Package Structure
+### Package Structure
 
 ```text
 pkg/escalation/
@@ -446,45 +522,17 @@ pkg/escalation/
 └── LICENSE                     # MIT License
 ```
 
-## Testing
+### Exports
 
-Run the test suite with vitest:
+The package exports the following:
 
-```bash
-# Run all tests
-bun test
-
-# Run tests in watch mode
-bun test --watch
-
-# Run tests with coverage
-bun test --coverage
+```typescript
+// Main exports from index.ts
+export type { EscalationProvider };
+export { default as EscalationService };
+export { default as GroupEscalationProvider };
+export {
+  EscalationServiceConfigSchema,
+  GroupEscalationProviderConfigSchema,
+};
 ```
-
-## Dependencies
-
-### Production Dependencies
-
-| Package                 | Version | Description                   |
-|-------------------------|---------|-------------------------------|
-| `@tokenring-ai/agent`   | 0.2.0   | Agent orchestration system    |
-| `@tokenring-ai/app`     | 0.2.0   | Application framework         |
-| `@tokenring-ai/utility` | 0.2.0   | Shared utilities and registry |
-| `zod`                   | ^4.3.6  | Schema validation             |
-
-### Development Dependencies
-
-| Package      | Version | Description         |
-|--------------|---------|---------------------|
-| `vitest`     | ^4.1.1  | Testing framework   |
-| `typescript` | ^6.0.2  | TypeScript compiler |
-
-## Related Components
-
-- **@tokenring-ai/agent**: Agent orchestration and command execution
-- **@tokenring-ai/app**: Application framework and plugin system
-- **@tokenring-ai/utility**: KeyedRegistry and utility functions
-
-## License
-
-MIT License - see LICENSE file for details.
