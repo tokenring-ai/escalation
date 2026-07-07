@@ -1,5 +1,6 @@
 import type { Agent } from "@tokenring-ai/agent";
 import type { TokenRingService } from "@tokenring-ai/app/types";
+import { ConfigurationError } from "@tokenring-ai/app/types";
 import KeyedRegistry from "@tokenring-ai/utility/registry/KeyedRegistry";
 import type { z } from "zod";
 import type { CommunicationChannel, EscalationProvider } from "./EscalationProvider.ts";
@@ -22,6 +23,6 @@ export default class EscalationService implements TokenRingService {
       return await provider.createCommunicationChannelWithUser(userId, agent);
     }
 
-    throw new Error(`Invalid user or group ID: ${serviceNameAndUser}`);
+    throw new ConfigurationError(this.name, `Invalid user or group ID: ${serviceNameAndUser}`);
   }
 }
