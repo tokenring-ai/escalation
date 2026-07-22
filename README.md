@@ -411,7 +411,7 @@ app.waitForService(AgentCommandService, agentCommandService =>
 
 ### Testing
 
-Run the test suite with vitest:
+Run the test suite with bun test:
 
 ```bash
 # Run all tests
@@ -439,7 +439,7 @@ bun test --coverage
 
 | Package      | Version     | Description         |
 |--------------|-------------|---------------------|
-| `vitest`     | `^4.1.1`    | Testing framework   |
+| `bun test`     | builtin  | Testing framework   |
 | `typescript` | `^6.0.2`    | TypeScript compiler |
 
 ### Related Components
@@ -518,7 +518,6 @@ pkg/escalation/
 ├── commands.ts                 # Command exports
 ├── commands/
 │   └── escalate.ts             # /escalate command implementation
-├── vitest.config.ts            # Vitest configuration
 └── LICENSE                     # MIT License
 ```
 
